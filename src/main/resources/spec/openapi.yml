@@ -1,0 +1,210 @@
+openapi: 3.0.0
+info:
+  title: Incidents
+  description: Technical Test. Aircall Company (2021)
+
+  contact:
+    name: Raúl Salazar de Torres
+    email: raul.informatico.sound@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:8080/api'
+tags:
+  - name: ACK
+    description: Actions for indicate the **Acknoledgement Alert** of specific service
+  - name: Healthy Status
+    description: Actions for indicate the **Healthy status** of specific service
+  - name: Escalation Policy
+    description: Extraction and management the **Escalation Policy** model
+
+components:
+  schemas:
+    TargetResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        type:
+          type: string
+          enum: ["SMS","EMAIL"]
+        reference:
+          type: string
+          description: PhonerNumber or email address where send the notification
+    LevelResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetResponse'
+    EscalationPolicyResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LevelResponse'
+    TargetRequest:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        type:
+          type: string
+          enum: ["SMS","EMAIL"]
+        reference:
+          type: string
+          description: PhonerNumber or email address where send the notification
+    LevelRequest:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetRequest'
+    EscalationPolicyRequest:
+      type: object
+      properties:
+        id:
+          type: number
+          format: integer
+          description: Number which identify this resource
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LevelRequest'
+
+
+
+paths:
+  /service/{serviceId}/ack:
+    post:
+      summary: Send ACK to specific service
+      tags:
+        - ACK
+      parameters:
+        - name: serviceId
+          in: path
+          description: id of service
+          required: true
+          example: 1
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal server error
+  /service/{serviceId}/healthy:
+    post:
+      summary: Indicate a healthy status to specific service
+      tags:
+        - Healthy Status
+      parameters:
+        - name: serviceId
+          in: path
+          description: id of service
+          required: true
+          example: 1
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal server error
+  /service/{serviceId}/policy:
+    get:
+      summary: Returns Policy for specific service
+      tags:
+        - Escalation Policy
+      parameters:
+        - name: serviceId
+          in: path
+          description: id of service
+          required: true
+          example: 1
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json;charset=UTF-8:
+              schema:
+                $ref: '#/components/schemas/EscalationPolicyResponse'
+  /policies/{policyId}:
+    get:
+      summary: Returns a specific policy
+      tags:
+        - Escalation Policy
+      parameters:
+        - name: policyId
+          in: path
+          description: id of policy
+          required: true
+          example: 1
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json;charset=UTF-8:
+              schema:
+                $ref: '#/components/schemas/EscalationPolicyResponse'
+        '401':
+          description: Not authorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal server error
+  /policies:
+    patch:
+      summary: Modify a policy
+      tags:
+        - Escalation Policy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EscalationPolicyRequest'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal server error
+
+
+

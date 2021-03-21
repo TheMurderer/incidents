@@ -1,0 +1,121 @@
+{
+	"info": {
+		"_postman_id": "a6534cfb-0b58-4699-9785-cd8e030010b2",
+		"name": "Aircall-IncidentAlerts-Test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Policies",
+			"item": [
+				{
+					"name": "Obtain policy of service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/service/1/policy",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"service",
+								"1",
+								"policy"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Obtain a policy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}:{{port}}/policies/1",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"policies",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Modify a policy",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\":1,\n    \"levels\":\n    [\n        {\n            \"id\":1,\n            \"targets\":\n            [\n                {\n                \"id\":1,\n                \"type\": \"SMS\",\n                \"reference\":\"623654987\"\n                }\n            ]\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}:{{port}}/policies/",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"policies",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ACK",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{host}}:{{port}}/service/1/ack",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"service",
+						"1",
+						"ack"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Healthy Status",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{host}}:{{port}}/service/1/healthy",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"service",
+						"1",
+						"healthy"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
