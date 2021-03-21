@@ -1,4 +1,4 @@
-# Mafia
+# Incidents
 
 Technical Test created by Raúl Salazar
 
