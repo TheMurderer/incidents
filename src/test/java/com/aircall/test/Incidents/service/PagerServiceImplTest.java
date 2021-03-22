@@ -240,7 +240,7 @@ class PagerServiceImplTest {
   }
 
   @Test
-  public void givenUnhealthyServiceWhenAckTimeoutIsReceivedThenNewTimeoutIsCreatedAndAllTargetsAreNotified() {
+  public void givenUnhealthyServiceWhenAckTimeoutIsReceivedThenLevelIsIncreasedNewTimeoutIsCreatedAndAllTargetsAreNotified() {
 
     // arrange
     Alert alert = new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
