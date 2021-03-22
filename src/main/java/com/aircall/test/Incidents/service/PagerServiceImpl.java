@@ -15,6 +15,7 @@ import com.aircall.test.Incidents.service.api.PagerService;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,8 @@ public class PagerServiceImpl implements PagerService {
 
   private final TimerService timerService;
 
+  private final ReentrantReadWriteLock rwLock;
+
   public PagerServiceImpl(EscPolicyService policyService, AlertRepository alertRepository,
       MailNotificationService mailNotificationService, SMSNotificationService smsNotificationService,
       TimerService timerService, @Value("${incidents.alarmTimer.default.duration}") Integer durationAlarm,
@@ -51,6 +54,8 @@ public class PagerServiceImpl implements PagerService {
     this.durationAlarm = durationAlarm;
     this.initialLevel = initialLevel;
     this.alarmNotFoundMessage = alarmNotFoundMessage;
+    this.rwLock = new ReentrantReadWriteLock();
+    ;
   }
 
   private void sendNotification(Target target, String message) {
@@ -62,11 +67,16 @@ public class PagerServiceImpl implements PagerService {
   }
 
   private void notifyTargets(Integer serviceId, String message, Integer level) {
-    EscalationPolicy escalationPolicy = policyService.getEscPolicyToSpecificService(serviceId);
-
-    if (escalationPolicy != null) {
-      escalationPolicy.getLevels().get(level).forEach(t -> sendNotification(t, message));
+    rwLock.readLock().lock();
+    try {
+      EscalationPolicy escalationPolicy = policyService.getEscPolicyToSpecificService(serviceId);
+      if (escalationPolicy != null) {
+        escalationPolicy.getLevels().get(level).forEach(t -> sendNotification(t, message));
+      }
+    } finally {
+      rwLock.readLock().unlock();
     }
+
   }
 
   private Alarm setAcknowledgementDelay(Integer alarmId, Integer serviceId) {
@@ -87,7 +97,12 @@ public class PagerServiceImpl implements PagerService {
           new Alert.Builder().withServiceId(serviceId).withLevel(this.initialLevel).withAlarmId(alarm.getId()).withMessage(message)
               .withStarted(LocalDateTime.now()).build();
 
-      alertRepository.createOrModifyAlert(newAlert);
+      rwLock.writeLock().lock();
+      try {
+        alertRepository.createOrModifyAlert(newAlert);
+      } finally {
+        rwLock.writeLock().unlock();
+      }
     }
   }
 
@@ -97,7 +112,12 @@ public class PagerServiceImpl implements PagerService {
       Alert alert = alertRepository.getAlertToService(serviceId);
       if (alert != null) {
         alert.setAck(Boolean.TRUE);
-        alertRepository.createOrModifyAlert(alert);
+        rwLock.writeLock().lock();
+        try {
+          alertRepository.createOrModifyAlert(alert);
+        } finally {
+          rwLock.writeLock().unlock();
+        }
       }
     }
   }
@@ -107,12 +127,17 @@ public class PagerServiceImpl implements PagerService {
     if (serviceId != null) {
       Alert alert = alertRepository.getAlertToService(serviceId);
       if (alert != null) {
-        alertRepository.removeAlert(alert.getId());
-        Alarm alarm = timerService.getAlarm(alert.getAlarmId());
-        if (alarm != null) {
-          timerService.removeAlarm(alarm.getId());
-        } else {
-          throw new AcknowledgedTimerNotFound(alarmNotFoundMessage);
+        rwLock.writeLock().lock();
+        try {
+          alertRepository.removeAlert(alert.getId());
+          Alarm alarm = timerService.getAlarm(alert.getAlarmId());
+          if (alarm != null) {
+            timerService.removeAlarm(alarm.getId());
+          } else {
+            throw new AcknowledgedTimerNotFound(alarmNotFoundMessage);
+          }
+        } finally {
+          rwLock.writeLock().unlock();
         }
       }
     }
@@ -129,12 +154,17 @@ public class PagerServiceImpl implements PagerService {
       if (alarm == null) {
         throw new AcknowledgedTimerNotFound(alarmNotFoundMessage);
       } else if (Duration.between(alarm.getStarted(), LocalDateTime.now()).compareTo(alarm.getDuration()) > 0) {
-        Alarm acknowledgementDelayUpdated = setAcknowledgementDelay(alarm.getId(), alert.getServiceId());
+        rwLock.writeLock().lock();
 
         final Integer newLevel = alert.getLevel() + 1;
-        alert.setAlarmId(acknowledgementDelayUpdated.getId());
-        alert.setLevel(newLevel);
-        alertRepository.createOrModifyAlert(alert);
+        try {
+          Alarm acknowledgementDelayUpdated = setAcknowledgementDelay(alarm.getId(), alert.getServiceId());
+          alert.setAlarmId(acknowledgementDelayUpdated.getId());
+          alert.setLevel(newLevel);
+          alertRepository.createOrModifyAlert(alert);
+        } finally {
+          rwLock.writeLock().unlock();
+        }
 
         notifyTargets(alert.getServiceId(), alert.getMessage(), newLevel);
       }
