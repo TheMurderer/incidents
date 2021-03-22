@@ -80,6 +80,8 @@ You can find the api associated with this domain documented in the `/spec/openap
 ## Postman
 You can find the collection and environment properties associated with local in the `/postman` folder.
 
+## Database
+Must include transactional block to avoid concurrency problems. 
 
 ## Usage :rocket:
 * To run test:
@@ -90,6 +92,3 @@ mvn test
 
 Enjoy!! :fire:
 
-
-
-exception.ack.timer.not.found.message=Don't exist acknowledged timer for this alert
