@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -85,6 +86,7 @@ public class PagerServiceImpl implements PagerService {
   }
 
   @Override
+  @Async
   public void processAlert(Integer serviceId, String message) {
     final Alert alert = alertRepository.getAlertToService(serviceId);
 
