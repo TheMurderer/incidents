@@ -15,17 +15,17 @@ public class TimerServiceAdapter implements TimerService {
   }
 
   @Override
-  public void setAlarm(Integer serviceId, Duration duration) {
-
-  }
-
-  @Override
-  public Alarm getAlarm(Integer serviceId) {
+  public Alarm createAlarm(Integer serviceId, Duration duration) {
     return null;
   }
 
   @Override
-  public void removeAlarm(Integer serviceId) {
+  public Alarm getAlarm(Integer alarmId) {
+    return null;
+  }
+
+  @Override
+  public void removeAlarm(Integer alarmId) {
 
   }
 }

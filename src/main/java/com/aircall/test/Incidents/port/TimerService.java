@@ -5,9 +5,9 @@ import java.time.Duration;
 
 public interface TimerService {
 
-  void setAlarm(Integer serviceId, Duration duration);
+  Alarm createAlarm(Integer serviceId, Duration duration);
 
-  Alarm getAlarm(Integer serviceId);
+  Alarm getAlarm(Integer alarmId);
 
-  void removeAlarm(Integer serviceId);
+  void removeAlarm(Integer alarmId);
 }

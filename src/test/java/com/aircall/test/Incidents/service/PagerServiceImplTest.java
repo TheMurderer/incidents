@@ -6,10 +6,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.aircall.test.Incidents.domain.Alarm;
 import com.aircall.test.Incidents.domain.Alert;
 import com.aircall.test.Incidents.domain.EscalationPolicy;
 import com.aircall.test.Incidents.domain.Target;
 import com.aircall.test.Incidents.domain.TargetType;
+import com.aircall.test.Incidents.exception.AcknowledgedTimerNotFound;
 import com.aircall.test.Incidents.port.AlertRepository;
 import com.aircall.test.Incidents.port.EscPolicyService;
 import com.aircall.test.Incidents.port.MailNotificationService;
@@ -18,8 +20,10 @@ import com.aircall.test.Incidents.port.TimerService;
 import com.aircall.test.Incidents.service.api.PagerService;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,8 +50,10 @@ class PagerServiceImplTest {
 
   private EscalationPolicy generateEPWithSMS() {
     Target target = new Target.Builder().withId(1).withType(TargetType.SMS).withReference("654123987").build();
+    Target target2 = new Target.Builder().withId(1).withType(TargetType.SMS).withReference("654123989").build();
     HashMap<Integer, List<Target>> levels = new HashMap<>();
     levels.put(1, List.of(target));
+    levels.put(2, List.of(target2));
     return new EscalationPolicy.Builder().withId(1).withLevels(levels).build();
   }
 
@@ -65,70 +71,151 @@ class PagerServiceImplTest {
     smsNotificationService = mock(SMSNotificationService.class);
     timerService = mock(TimerService.class);
     pagerService =
-        new PagerServiceImpl(policyService, alertRepository, mailNotificationService, smsNotificationService, timerService, 30000);
+        new PagerServiceImpl(policyService, alertRepository, mailNotificationService, smsNotificationService, timerService, 30000, 1,
+            "messageException");
 
   }
 
   @Test
-  public void whenProcessAlertThenMailServiceIsInvokedIsInvoked() {
+  public void givenHealthyServiceWhenProcessAlertThenMailServiceToTargetsOfFirstLevelOfEscalationIsInvoked() {
     // arrange
     when(policyService.getEscPolicyToSpecificService(1)).thenReturn(generateEPWithEmail());
+    when(timerService.createAlarm(1, Duration.ofMillis(30000))).thenReturn(
+        new Alarm.Builder().withId(1).withServiceId(1).withStarted(LocalDateTime.now()).withDuration(Duration.ofMillis(30000)).build());
 
     // act
     pagerService.processAlert(1, "test");
 
     // assert
     verify(policyService).getEscPolicyToSpecificService(1);
-    verify(alertRepository).createAlert(any());
-    verify(timerService).setAlarm(1, Duration.ofMillis(30000));
-    verify(mailNotificationService).setNotification("test", "raul.informatico.sound@gmail.com");
-    verify(smsNotificationService, times(0)).setNotification(any(), any());
+    verify(alertRepository)
+        .createOrModifyAlert(new Alert.Builder().withServiceId(1).withLevel(1).withAlarmId(1).withMessage("test").build());
+    verify(timerService).createAlarm(1, Duration.ofMillis(30000));
+    verify(mailNotificationService).sendNotification("test", "raul.informatico.sound@gmail.com");
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
   }
 
   @Test
-  public void whenProcessAlertThenSMSServiceIsInvokedIsInvoked() {
+  public void givenHealthyServiceWhenProcessAlertWithPolicyAndSMSTargetsThenSMSNotificationServiceOfFirstLevelOfEscalationIsInvokedIsInvoked() {
+
     // arrange
     when(policyService.getEscPolicyToSpecificService(1)).thenReturn(generateEPWithSMS());
+    when(timerService.createAlarm(1, Duration.ofMillis(30000))).thenReturn(
+        new Alarm.Builder().withId(1).withServiceId(1).withStarted(LocalDateTime.now()).withDuration(Duration.ofMillis(30000)).build());
 
     // act
     pagerService.processAlert(1, "test");
 
     // assert
     verify(policyService).getEscPolicyToSpecificService(1);
-    verify(alertRepository).createAlert(any());
-    verify(timerService).setAlarm(1, Duration.ofMillis(30000));
-    verify(smsNotificationService).setNotification("test", "654123987");
-    verify(mailNotificationService, times(0)).setNotification(any(), any());
+    verify(alertRepository)
+        .createOrModifyAlert(new Alert.Builder().withServiceId(1).withLevel(1).withAlarmId(1).withMessage("test").build());
+    verify(timerService).createAlarm(1, Duration.ofMillis(30000));
+    verify(smsNotificationService).sendNotification("test", "654123987");
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
   }
 
   @Test
-  public void whenProcessAlertWithPolicyWithoutTargetThenAnyNotificationServiceIsInvokedIsInvoked() {
+  public void givenUnhealthyServiceWhenAlertIsReceivedThenAnyNotificationWillBeSendAndDonTSetNewAckDelay() {
+
+    //arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
+        LocalDateTime.now()).build());
+
+    // act
+    pagerService.processAlert(1, "test");
+
+    // assert
+    verify(policyService, times(0)).getEscPolicyToSpecificService(any());
+    verify(alertRepository, times(0)).createOrModifyAlert(any());
+    verify(timerService, times(0)).createAlarm(any(), any());
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
+  }
+
+  @Test
+  public void givenHealthyServiceWithoutPolicyWhenProcessAlertIsInvokedThenNotificationsAreNoSend() {
+    // arrange
+    when(policyService.getEscPolicyToSpecificService(1)).thenReturn(null);
+    when(timerService.createAlarm(1, Duration.ofMillis(30000))).thenReturn(
+        new Alarm.Builder().withId(1).withServiceId(1).withStarted(LocalDateTime.now()).withDuration(Duration.ofMillis(30000)).build());
+
+    // act
+    pagerService.processAlert(1, "test");
+
+    // assert
+    verify(policyService).getEscPolicyToSpecificService(1);
+    verify(alertRepository).createOrModifyAlert(any());
+    verify(timerService).createAlarm(1, Duration.ofMillis(30000));
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
+  }
+
+  @Test
+  public void givenHealthyServiceWhenProcessAlertWithPolicyWithoutTargetThenAnyNotificationServiceIsInvokedIsInvoked() {
     // arrange
     when(policyService.getEscPolicyToSpecificService(1)).thenReturn(generateEPWithoutTarget());
+    when(timerService.createAlarm(1, Duration.ofMillis(30000))).thenReturn(
+        new Alarm.Builder().withId(1).withServiceId(1).withStarted(LocalDateTime.now()).withDuration(Duration.ofMillis(30000)).build());
 
     // act
     pagerService.processAlert(1, "test");
 
     // assert
     verify(policyService).getEscPolicyToSpecificService(1);
-    verify(alertRepository).createAlert(any());
-    verify(timerService).setAlarm(1, Duration.ofMillis(30000));
-    verify(smsNotificationService, times(0)).setNotification(any(), any());
-    verify(mailNotificationService, times(0)).setNotification(any(), any());
+    verify(alertRepository).createOrModifyAlert(any());
+    verify(timerService).createAlarm(1, Duration.ofMillis(30000));
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
   }
 
   @Test
-  public void whenProcessAckThenAlarmIsRemoved() {
+  public void givenUnhealthyServiceWhenProcessAckThenAlarmIsRemoved() {
+
+    // arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(new Alert.Builder().withId(1).withLevel(1).build());
 
     // act
     pagerService.processAck(1);
 
     // assert
-    verify(timerService).removeAlarm(1);
+    verify(alertRepository).createOrModifyAlert(new Alert.Builder().withId(1).withLevel(1).withAck(Boolean.TRUE).build());
   }
 
   @Test
-  public void whenProcessHealthyThenAlarmIsRemovedAndAlertRepositoryModifiedMethodInvoked() {
+  public void givenHealthyServiceWhenProcessAckThenDoNotHappenNothing() {
+
+    // arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(null);
+
+    // act
+    pagerService.processAck(1);
+
+    // assert
+    verify(alertRepository, times(0)).createOrModifyAlert(any());
+  }
+
+  @Test
+  public void givenHealthyServiceWhenProcessHealthyIsReceivedThenNoMethodIsInvoked() {
+
+    // arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(null);
+
+    // act
+    pagerService.processHealthy(1);
+
+    // assert
+    verify(timerService, times(0)).removeAlarm(any());
+    verify(alertRepository, times(0)).removeAlert(any());
+  }
+
+  @Test
+  public void givenUnhealthyServiceWhenProcessHealthyIsReceivedThenAlarmIsRemovedAndAlertRepositoryModifiedMethodIsInvoked() {
+
+    // arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(new Alert.Builder().withId(1).withLevel(1).withAlarmId(1).build());
+    when(timerService.getAlarm(1)).thenReturn(
+        new Alarm.Builder().withId(1).withServiceId(1).withStarted(LocalDateTime.now()).withDuration(Duration.ofMillis(30000)).build());
 
     // act
     pagerService.processHealthy(1);
@@ -139,15 +226,102 @@ class PagerServiceImplTest {
   }
 
   @Test
-  public void whenScheduledVerificationAlarmsThenGetAlarmAndRepositoryMethodIsInvoked() {
+  public void givenUnhealthyServiceWithoutAckTimeoutCreatedWhenProcessHealthyIsReceivedThenExceptionIsReceived() {
 
-    when(alertRepository.getAlertToService(1)).thenReturn(new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
-        LocalDateTime.now()).build());
+    // arrange
+    when(alertRepository.getAlertToService(1)).thenReturn(new Alert.Builder().withId(1).withLevel(1).withAlarmId(1).build());
+    when(timerService.getAlarm(1)).thenReturn(null);
+
+    // act
+    Assertions.assertThrows(AcknowledgedTimerNotFound.class, () -> {
+      pagerService.processHealthy(1);
+    });
+
+  }
+
+  @Test
+  public void givenUnhealthyServiceWhenAckTimeoutIsReceivedThenNewTimeoutIsCreatedAndAllTargetsAreNotified() {
+
+    // arrange
+    Alert alert = new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
+        LocalDateTime.now()).withLevel(1).withMessage("Test").build();
+    when(alertRepository.getAllAlert()).thenReturn(List.of(alert));
+    when(timerService.getAlarm(2)).thenReturn(new Alarm.Builder().withId(2).withServiceId(1).withStarted(LocalDateTime.now().minus(35000,
+        ChronoUnit.MILLIS)).withDuration(Duration.ofMillis(30000)).build());
+    when(timerService.createAlarm(1, Duration.ofMillis(30000)))
+        .thenReturn(new Alarm.Builder().withId(4).withServiceId(1).withStarted(LocalDateTime.now().minus(35000,
+            ChronoUnit.MILLIS)).withDuration(Duration.ofMillis(30000)).build());
+    when(policyService.getEscPolicyToSpecificService(1)).thenReturn(generateEPWithSMS());
+
     // act
     pagerService.scheduledVerificationAlarms();
 
     // assert
-    verify(alertRepository).getAlertToService(1);
-    verify(timerService).getAlarm(2);
+    verify(timerService).removeAlarm(2);
+    verify(alertRepository).createOrModifyAlert(
+        new Alert.Builder().withId(1).withServiceId(1).withAlarmId(4).withLevel(2).withStarted(alert.getStarted()).withMessage("Test")
+            .build());
+    verify(smsNotificationService).sendNotification("Test", "654123989");
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
+
   }
+
+  @Test
+  public void givenUnhealthyServiceWithACKOKReceivedWhenAckTimeoutIsReceivedThenAnyTargetIsNotifiedAndNotDelayIsCreated() {
+
+    // arrange
+    Alert alert = new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
+        LocalDateTime.now()).withLevel(1).withMessage("Test").withAck(Boolean.TRUE).build();
+    when(alertRepository.getAllAlert()).thenReturn(List.of(alert));
+
+    // act
+    pagerService.scheduledVerificationAlarms();
+
+    // assert
+    verify(timerService, times(0)).getAlarm(2);
+    verify(timerService, times(0)).removeAlarm(any());
+    verify(alertRepository, times(0)).createOrModifyAlert(any());
+    verify(policyService, times(0)).getEscPolicyToSpecificService(any());
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
+
+  }
+
+  @Test
+  public void givenUnhealthyServiceWithoutAcknowledgementTimeoutWhenScheduleFunctionIsExecutedThenAnyInformationAboutThatServicesIsModified() {
+
+    // arrange
+    Alert alert = new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
+        LocalDateTime.now()).withLevel(1).withMessage("Test").build();
+    when(alertRepository.getAllAlert()).thenReturn(List.of(alert));
+    when(timerService.getAlarm(2)).thenReturn(new Alarm.Builder().withId(2).withServiceId(1).withStarted(LocalDateTime.now().minus(20000,
+        ChronoUnit.MILLIS)).withDuration(Duration.ofMillis(30000)).build());
+
+    // act
+    pagerService.scheduledVerificationAlarms();
+
+    // assert
+    verify(timerService, times(0)).removeAlarm(any());
+    verify(alertRepository, times(0)).createOrModifyAlert(any());
+    verify(policyService, times(0)).getEscPolicyToSpecificService(any());
+    verify(mailNotificationService, times(0)).sendNotification(any(), any());
+    verify(smsNotificationService, times(0)).sendNotification(any(), any());
+
+  }
+
+  @Test
+  public void givenUnhealthyServiceWithoutACKDelayCreatedWhenScheduleFunctionIsExecutedThenException() {
+
+    // arrange
+    Alert alert = new Alert.Builder().withId(1).withServiceId(1).withAlarmId(2).withStarted(
+        LocalDateTime.now()).withLevel(1).withMessage("Test").build();
+    when(alertRepository.getAllAlert()).thenReturn(List.of(alert));
+    when(timerService.getAlarm(2)).thenReturn(null);
+
+    // act
+    Assertions.assertThrows(AcknowledgedTimerNotFound.class, () -> {
+      pagerService.scheduledVerificationAlarms();
+    });
+  }
+
 }

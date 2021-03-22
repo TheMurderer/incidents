@@ -70,6 +70,8 @@ The following properties can change the behavior:
 | __Property__ | __Description__ | __Default value__ |
 |--------------|-----------------|-------------------|
 | `incidents.alarmTimer.default.duration` | Default duration of alarm (Milis seconds) | `54000` |
+| `incidents.alert.level.initial` | Initial level of alert | `1` |
+| `exception.ack.timer.not.found.message` | Default Message for Acknoledgement Delay Not Found exception | `Don't exist acknowledged timer for this alert` |
 
 ## API
 
@@ -90,3 +92,4 @@ Enjoy!! :fire:
 
 
 
+exception.ack.timer.not.found.message=Don't exist acknowledged timer for this alert

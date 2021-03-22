@@ -13,9 +13,13 @@ public class AlertEntity {
 
   private Integer alarmId;
 
+  private String message;
+
   private LocalDateTime started;
 
   private LocalDateTime stopped;
+
+  private LocalDateTime ack;
 
   public Integer getId() {
     return id;
@@ -23,6 +27,10 @@ public class AlertEntity {
 
   public Integer getServiceId() {
     return serviceId;
+  }
+
+  public String getMessage() {
+    return message;
   }
 
   public Integer getLevelId() {
@@ -39,6 +47,10 @@ public class AlertEntity {
 
   public LocalDateTime getStopped() {
     return stopped;
+  }
+
+  public LocalDateTime getAck() {
+    return ack;
   }
 
   public void setStopped(LocalDateTime stopped) {
@@ -83,6 +95,11 @@ public class AlertEntity {
       return this;
     }
 
+    public Builder withAck(LocalDateTime value) {
+      object.ack = value;
+      return this;
+    }
+
     public AlertEntity build() {
       return object;
     }
@@ -99,12 +116,13 @@ public class AlertEntity {
     AlertEntity alert = (AlertEntity) o;
     return Objects.equals(id, alert.id) && Objects.equals(serviceId, alert.serviceId) && Objects
         .equals(levelId, alert.levelId) && Objects.equals(alarmId, alert.alarmId) && Objects
-        .equals(started, alert.started) && Objects.equals(stopped, alert.stopped);
+        .equals(started, alert.started) && Objects.equals(message, alert.message) && Objects.equals(stopped, alert.stopped) && Objects
+        .equals(ack, alert.ack);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, serviceId, levelId, alarmId, started, stopped);
+    return Objects.hash(id, serviceId, levelId, alarmId, started, stopped, ack, message);
   }
 
 }

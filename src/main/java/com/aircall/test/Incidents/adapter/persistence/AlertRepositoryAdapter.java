@@ -2,6 +2,8 @@ package com.aircall.test.Incidents.adapter.persistence;
 
 import com.aircall.test.Incidents.domain.Alert;
 import com.aircall.test.Incidents.port.AlertRepository;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,12 +20,17 @@ public class AlertRepositoryAdapter implements AlertRepository {
   }
 
   @Override
+  public List<Alert> getAllAlert() {
+    return new ArrayList<>();
+  }
+
+  @Override
   public Alert getAlertToService(Integer serviceId) {
     return null;
   }
 
   @Override
-  public void createAlert(Alert alert) {
+  public void createOrModifyAlert(Alert alert) {
 
   }
 

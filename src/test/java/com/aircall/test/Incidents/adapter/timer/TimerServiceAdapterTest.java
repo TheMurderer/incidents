@@ -10,8 +10,10 @@ import com.aircall.test.Incidents.domain.Alarm;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+@Disabled
 class TimerServiceAdapterTest {
 
   private AlarmTimerToAlarmConverter converter;

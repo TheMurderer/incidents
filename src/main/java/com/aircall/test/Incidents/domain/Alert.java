@@ -9,24 +9,24 @@ public class Alert {
 
   private Integer serviceId;
 
-  private Integer levelId;
+  private Integer level;
 
   private Integer alarmId;
+
+  private String message;
 
   private LocalDateTime started;
 
   private LocalDateTime stopped;
 
-  public Integer getId() {
-    return id;
-  }
+  private Boolean ack;
 
   public Integer getServiceId() {
     return serviceId;
   }
 
-  public Integer getLevelId() {
-    return levelId;
+  public Integer getLevel() {
+    return level;
   }
 
   public Integer getAlarmId() {
@@ -39,6 +39,30 @@ public class Alert {
 
   public LocalDateTime getStopped() {
     return stopped;
+  }
+
+  public Boolean getAck() {
+    return ack;
+  }
+
+  public Integer getId() {
+    return id;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setAlarmId(Integer alarmId) {
+    this.alarmId = alarmId;
+  }
+
+  public void setAck(Boolean ack) {
+    this.ack = ack;
+  }
+
+  public void setLevel(Integer level) {
+    this.level = level;
   }
 
   public void setStopped(LocalDateTime stopped) {
@@ -63,8 +87,8 @@ public class Alert {
       return this;
     }
 
-    public Builder withLevelId(Integer value) {
-      object.levelId = value;
+    public Builder withLevel(Integer value) {
+      object.level = value;
       return this;
     }
 
@@ -73,8 +97,18 @@ public class Alert {
       return this;
     }
 
+    public Builder withMessage(String value) {
+      object.message = value;
+      return this;
+    }
+
     public Builder withStarted(LocalDateTime value) {
       object.started = value;
+      return this;
+    }
+
+    public Builder withAck(Boolean value) {
+      object.ack = value;
       return this;
     }
 
@@ -97,13 +131,12 @@ public class Alert {
       return false;
     }
     Alert alert = (Alert) o;
-    return Objects.equals(id, alert.id) && Objects.equals(serviceId, alert.serviceId) && Objects
-        .equals(levelId, alert.levelId) && Objects.equals(alarmId, alert.alarmId) && Objects
-        .equals(started, alert.started) && Objects.equals(stopped, alert.stopped);
+    return Objects.equals(serviceId, alert.serviceId) && Objects
+        .equals(level, alert.level) && Objects.equals(alarmId, alert.alarmId) && Objects.equals(ack, alert.ack);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, serviceId, levelId, alarmId, started, stopped);
+    return Objects.hash(serviceId, level, alarmId, started, stopped, ack);
   }
 }

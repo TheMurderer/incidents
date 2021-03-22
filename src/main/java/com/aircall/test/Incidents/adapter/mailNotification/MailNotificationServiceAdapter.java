@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class MailNotificationServiceAdapter implements MailNotificationService {
 
   @Override
-  public void setNotification(String message, String emailAddress) {
+  public void sendNotification(String message, String emailAddress) {
 
   }
 }
